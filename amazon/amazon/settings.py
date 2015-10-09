@@ -8,7 +8,6 @@
 #     http://doc.scrapy.org/en/latest/topics/settings.html
 #     http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
-from datetime import datetime
 
 
 BOT_NAME = 'amazon'
@@ -27,10 +26,10 @@ CONCURRENT_ITEMS = 100
 # Configure a delay for requests for the same website (default: 0)
 # See http://scrapy.readthedocs.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 0
+#DOWNLOAD_DELAY = 0
 
 # The download delay setting will honor only one of:
-CONCURRENT_REQUESTS_PER_DOMAIN=50
+CONCURRENT_REQUESTS_PER_DOMAIN=32
 #CONCURRENT_REQUESTS_PER_IP=16
 
 # Disable cookies (enabled by default)
@@ -43,9 +42,10 @@ CONCURRENT_REQUESTS_PER_DOMAIN=50
 DEFAULT_REQUEST_HEADERS = {
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en',
-  # 'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5})'
+  'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0'
 }
 
+DEPTH_LIMIT = 500
 # Enable or disable spider middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
@@ -70,40 +70,43 @@ DEFAULT_REQUEST_HEADERS = {
 #    'amazon.pipelines.SomePipeline': 300,
 
 ITEM_PIPELINES = {
-    'amazon.pipelines.DuplicatesPipeline': 100,
+    'amazon.pipelines.InitialPipeline': 100,
     'amazon.pipelines.TradeEligiblePipeline': 200,
     'amazon.pipelines.HasUsedPipeline': 300,
     'amazon.pipelines.ProfitablePipeline': 400,
-    'amazon.pipelines.WriteToCsv': 500,
+    # 'amazon.pipelines.CheckTradeDataPipeline': 500,
+    'amazon.pipelines.LoggedProfitablePipeline': 600,
+
 
 }
 
 item_count = 1
 
-output_folder = r'C:\Users\kbonnet\OneDrive\Textbook Arbitrage'
+# output_folder = r'C:\Users\kbonnet\OneDrive\Textbook Arbitrage'
+#
+# item_file = r'{}\items\scrape_{}.csv'.format(output_folder, datetime.today().date())
+# open(item_file, 'w').close()
+#
+# results_file = r'{}\results\scrape_{}.csv'.format(output_folder, datetime.today().date())
+# open(results_file, 'w').close()
+# csv_file_path = results_file
+#
+# log_file = r'{}\logs\scrape_log_{}.txt'.format(output_folder, datetime.today().date())
+# open(log_file, 'w').close()
+#
+# log_summary_file = r'{}\logs\scrape_log_summary_{}.txt'.format(output_folder, datetime.today().date())
+# open(log_summary_file, 'w').close()
+#
+# LOG_FILE = log_file
+# #}
 
-item_file = r'{}\items\scrape_{}.csv'.format(output_folder, datetime.today().date())
-open(item_file, 'w').close()
-
-results_file = r'{}\results\scrape_{}.csv'.format(output_folder, datetime.today().date())
-open(results_file, 'w').close()
-csv_file_path = results_file
-
-log_file = r'{}\logs\scrape_log_{}.txt'.format(output_folder, datetime.today().date())
-open(log_file, 'w').close()
-
-log_summary_file = r'{}\logs\scrape_log_summary_{}.txt'.format(output_folder, datetime.today().date())
-open(log_summary_file, 'w').close()
-
-LOG_FILE = log_file
-#}
-
-
+# LOG_STDOUT = True
+LOG_LEVEL = 'WARNING'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
 # NOTE: AutoThrottle will honour the standard settings for concurrency and delay
-#AUTOTHROTTLE_ENABLED=True
+AUTOTHROTTLE_ENABLED=True
 # The initial download delay
 #AUTOTHROTTLE_START_DELAY=5
 # The maximum download delay to be set in case of high latencies

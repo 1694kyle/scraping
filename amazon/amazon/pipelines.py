@@ -5,34 +5,24 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 from scrapy.exceptions import DropItem
-import csv
 from amazon import settings
-
-
-def write_to_csv(item):
-    writer = csv.writer(open(settings.csv_file_path, 'a'), lineterminator='\n')
-    writer.writerow([item['asin'], item['title'], item['price'], item['trade_value'], item['profit'], item['roi'], item['url']])# [item[key] for key in item.keys()])
-
-
-class WriteToCsv(object):
-    def process_item(self, item, spider):
-        write_to_csv(item)
-        return item
+# from scrapy.exporters import CsvItemExporter
 
 
 class TradeEligiblePipeline(object):
 
     def process_item(self, item, spider):
-        if not item['trade_in_eligible']:
-            raise DropItem('Not Trade Eligible: {}'.format(item['asin']))
-        elif item['trade_value'] == ' ':
-            raise DropItem('\tNot Trade Value: {}'.format(item['asin']))
-        else:
+        if item['trade_in_eligible']: # or item.get('chegg_trade_value') or item.get('buyback_trade_value'):
+            if not item['trade_value'] == ' ': item['trade_value'] = float(item['trade_value'])
             return item
+        #
+        # elif item['trade_value'] == ' ':
+        #     raise DropItem('\tNo Trade Value: {}'.format(item['asin']))
+        else:
+            raise DropItem('Not Trade Eligible: {}'.format(item['asin']))
 
 
 class HasUsedPipeline(object):
-
     def process_item(self, item, spider):
         if item['lowest_used_price1'] == ' ' and item['lowest_used_price2'] == ' ':
             raise DropItem('\tNo Used: {}'.format(item['asin']))
@@ -50,30 +40,64 @@ class HasUsedPipeline(object):
 
 
 class ProfitablePipeline(object):
-
     def process_item(self, item, spider):
-        price = item['price']
-        trade_value = float(item['trade_value'])
-
-        if trade_value - price > 10:
-            item['roi'] = '%{}'.format(round((trade_value - price) / price * 100, 2))
-            item['profit'] = '${}'.format(trade_value - price)
-            print '\tProfit Found: {}'.format(item['profit'])
+        profitable, item = check_profit(item)
+        if profitable:
+            print 'Profitable: {}'.format(item['asin'])
             return item
         else:
             raise DropItem('\tNot Profitable: {}'.format(item['asin']))
 
 
-class DuplicatesPipeline(object):
+class LoggedProfitablePipeline(object):
+    def process_item(self, item, spider):
+        if item['asin'] not in spider.logged_profitable_items:
+            spider.logged_profitable_items[item['asin']] = item
+            print 'New Item Logged: {}'.format(item['asin'])
+            return item
+        elif item['asin'] in spider.logged_profitable_items:
+            if spider.logged_profitable_items[item['asin']]['trade_value'] != item['trade_value']:
+                spider.logged_profitable_items[item['asin']] = item  # updating item
+                print 'Item Updated: {}'.format(item['asin'])
+                return item
+            else:
+                raise DropItem('\tAlready Logged Profitable: {}'.format(item['asin']))
+        else:
+            raise DropItem('\tAlready Logged Profitable: {}'.format(item['asin']))
 
-    def __init__(self):
-        self.ids_seen = set()
+
+class InitialPipeline(object):
 
     def process_item(self, item, spider):
-        if item['asin'] in self.ids_seen:
-            raise DropItem("\tDuplicate item found: {}".format(item['asin']))
-        elif item['title'] == ' ':
-            raise DropItem('\tNo Title Found: {}'.format(item['asin']))
-        else:
-            self.ids_seen.add(item['asin'])
-            return item
+        # spider.crawler.stats.inc_value('item_count')
+        return item
+
+
+def check_profit(item):
+    price = item['price']
+    chegg_value = item.get('chegg_trade_value', 0)
+    buyback_value = item.get('buyback_trade_value', 0)
+    trade_value = item.get('trade_value', 0)
+    max_trade = max(chegg_value, buyback_value, trade_value)
+    # find trade link
+    if chegg_value == max_trade:
+        item['trade_link'] = item['chegg_trade_link']
+    elif buyback_value == max_trade:
+        item['trade_link'] = item['buyback_trade_link']
+    else:
+        item['trade_link'] = item['url']
+
+    true_profit = (max_trade - price) - 3.99
+    # Check profit including shipping
+    if true_profit > 10:
+        item['roi'] = '%{}'.format(round(true_profit / price * 100, 2))
+        item['profit'] = '${}'.format(trade_value - price)
+        item['profitable'] = True
+        return True, item
+    else:
+        return False, item
+
+
+
+# tood: look up each profitable item and see if desired seller available and what price
+# todo: so desired_price, desired_profit, desired_roi

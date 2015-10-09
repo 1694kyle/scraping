@@ -20,5 +20,14 @@ class AmazonItem(scrapy.Item):
     trade_value = scrapy.Field()
     url = scrapy.Field()
     profit = scrapy.Field()
+    profitable = scrapy.Field()
     roi = scrapy.Field()
+    isbn10 = scrapy.Field()
+    isbn13 = scrapy.Field()
+    trade_link = scrapy.Field()
+    chegg_trade_value = scrapy.Field()
+    chegg_trade_link = scrapy.Field()
+    buyback_trade_value = scrapy.Field()
+    buyback_trade_link = scrapy.Field()
+
 
